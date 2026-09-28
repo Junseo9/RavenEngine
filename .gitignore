@@ -2,8 +2,8 @@
 /AGENTS.md
 
 # CMake and Visual Studio build output
-/out/
-/.vs/
+out/
+.vs/
 /build/
 /cmake-build-*/
 CMakeFiles/
