@@ -1,0 +1,21 @@
+# Local collaboration instructions
+/AGENTS.md
+
+# CMake and Visual Studio build output
+/out/
+/.vs/
+/build/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CMakeUserPresets.json
+
+# Editor and compiler intermediates
+*.user
+*.suo
+*.obj
+*.pdb
+*.ilk
+*.idb
