@@ -41,6 +41,13 @@ namespace Raven
 
 		auto enabledExtensions = extensions;
 
+		// MoltenVK devices are exposed by the loader only with this flag.
+		for (const char* extension : enabledExtensions)
+		{
+			if (std::strcmp(extension, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0)
+				createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+		}
+
 		#ifdef RAVEN_ENABLE_VALIDATION
 		enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		createInfo.enabledLayerCount = 1;

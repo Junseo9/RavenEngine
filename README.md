@@ -14,4 +14,13 @@ cmake --build out/build/x64-debug
 .\out\build\x64-debug\RavenEngine\RavenEngine.exe
 ```
 
+## Development tools on macOS (Apple Silicon)
+
+```
+cmake --preset macos-debug
+cmake -S . -B build
+cmake --build out/build/arm-debug
+open out/build/macos-debug/RavenEngine/RavenEngine
+```
+
 The `out/` directory contains generated build files and is ignored by Git. The project currently has no automated tests.
