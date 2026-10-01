@@ -30,7 +30,7 @@ namespace Raven
 		virtual std::uint32_t GetHeight() const = 0;
 		virtual std::vector<const char*> 
 			GetRequiredVulkanInstanceExtensions() const = 0;
-		virtual bool IsKeyDown(Key key) const = 0;
+		virtual const InputState& GetInputState() const = 0;
 
 		virtual VkSurfaceKHR CreateVulkanSurface(VkInstance instance) const = 0;
 

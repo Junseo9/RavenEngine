@@ -2,8 +2,10 @@
 
 #include <vulkan/vulkan.h>
 #include "Win32Window.hpp"
+#include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <windowsx.h>
 
 namespace Raven
 {
@@ -26,6 +28,96 @@ namespace Raven
 				throw std::runtime_error("Could not convert window title");
 
 			return result;
+		}
+
+		Key TranslateKey(WPARAM virtualKey)
+		{
+			if (virtualKey >= 'A' && virtualKey <= 'Z')
+			{
+				return static_cast<Key>(
+					static_cast<std::uint16_t>(Key::A) +
+					static_cast<std::uint16_t>(virtualKey - 'A'));
+			}
+
+			if (virtualKey >= '1' && virtualKey <= '9')
+			{
+				return static_cast<Key>(
+					static_cast<std::uint16_t>(Key::Digit1) +
+					static_cast<std::uint16_t>(virtualKey - '1'));
+			}
+
+			switch (virtualKey)
+			{
+			case '0':       return Key::Digit0;
+			case VK_ESCAPE: return Key::Escape;
+			case VK_RETURN: return Key::Enter;
+			case VK_BACK:   return Key::Backspace;
+			case VK_TAB:    return Key::Tab;
+			case VK_SPACE:  return Key::Space;
+			case VK_INSERT: return Key::Insert;
+			case VK_HOME:   return Key::Home;
+			case VK_PRIOR:  return Key::PageUp;
+			case VK_DELETE: return Key::Delete;
+			case VK_END:    return Key::End;
+			case VK_NEXT:   return Key::PageDown;
+			case VK_LEFT:   return Key::Left;
+			case VK_RIGHT:  return Key::Right;
+			case VK_UP:     return Key::Up;
+			case VK_DOWN:   return Key::Down;
+			default:        return Key::Unknown;
+			}
+		}
+
+		void UpdateButton(ButtonState& state, bool down)
+		{
+			if (down)
+			{
+				if (!state.Down)
+					state.Pressed = true;
+			}
+			else if (state.Down)
+			{
+				state.Released = true;
+			}
+
+			state.Down = down;
+		}
+
+		void UpdateKey(InputState& input, Key key, bool down)
+		{
+			const auto index = static_cast<std::size_t>(key);
+			if (key == Key::Unknown || index >= input.Keys.size())
+				return;
+
+			UpdateButton(input.Keys[index], down);
+		}
+
+		void UpdateMouseButton(
+			HWND handle,
+			InputState& input,
+			MouseButton button,
+			bool down)
+		{
+			const auto index = static_cast<std::size_t>(button);
+			if (index >= input.MouseButtons.size())
+				return;
+
+			UpdateButton(input.MouseButtons[index], down);
+
+			if (down)
+			{
+				SetCapture(handle);
+				return;
+			}
+
+			for (const ButtonState& state : input.MouseButtons)
+			{
+				if (state.Down)
+					return;
+			}
+
+			if (GetCapture() == handle)
+				ReleaseCapture();
 		}
 	}
 
@@ -75,6 +167,8 @@ namespace Raven
 
 	void Win32Window::PollEvents()
 	{
+		m_Input.ClearTransientState();
+
 		MSG message{};
 		while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -114,13 +208,13 @@ namespace Raven
 		if (result != VK_SUCCESS)
 			throw std::runtime_error(
 				"vkCreateWin32SurfaceKHR failed: " + std::to_string(result));
-		
+
 		return surface;
 	}
 
-	bool Win32Window::IsKeyDown(Key key) const
+	const InputState& Win32Window::GetInputState() const
 	{
-		return key == Key::Escape && m_EscapeDown;
+		return m_Input;
 	}
 
 	LRESULT CALLBACK Win32Window::WindowProc(
@@ -155,17 +249,98 @@ namespace Raven
 				}
 				return 0;
 			}
+			case WM_MOUSEMOVE:
+			{
+				const std::int32_t x = GET_X_LPARAM(lParam);
+				const std::int32_t y = GET_Y_LPARAM(lParam);
+
+				if (self->m_Input.HasCursorPosition)
+				{
+					self->m_Input.CursorDeltaX += x - self->m_Input.CursorX;
+					self->m_Input.CursorDeltaY += y - self->m_Input.CursorY;
+				}
+				else
+				{
+					self->m_Input.HasCursorPosition = true;
+				}
+
+				self->m_Input.CursorX = x;
+				self->m_Input.CursorY = y;
+				return 0;
+			}
+			case WM_LBUTTONDOWN:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Left, true);
+				return 0;
+			case WM_LBUTTONUP:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Left, false);
+				return 0;
+			case WM_RBUTTONDOWN:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Right, true);
+				return 0;
+			case WM_RBUTTONUP:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Right, false);
+				return 0;
+			case WM_MBUTTONDOWN:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Middle, true);
+				return 0;
+			case WM_MBUTTONUP:
+				UpdateMouseButton(
+					handle, self->m_Input, MouseButton::Middle, false);
+				return 0;
+			case WM_XBUTTONDOWN:
+			{
+				const MouseButton button =
+					GET_XBUTTON_WPARAM(wParam) == XBUTTON1
+					? MouseButton::X1 : MouseButton::X2;
+				UpdateMouseButton(handle, self->m_Input, button, true);
+				return TRUE;
+			}
+			case WM_XBUTTONUP:
+			{
+				const MouseButton button =
+					GET_XBUTTON_WPARAM(wParam) == XBUTTON1
+					? MouseButton::X1 : MouseButton::X2;
+				UpdateMouseButton(handle, self->m_Input, button, false);
+				return TRUE;
+			}
 			case WM_KEYDOWN:
-				if (wParam == VK_ESCAPE)
-					self->m_EscapeDown = true;
+			{
+				const Key key = TranslateKey(wParam);
+				if (key != Key::Unknown)
+				{
+					UpdateKey(self->m_Input, key, true);
+					return 0;
+				}
 				break;
+			}
 			case WM_KEYUP:
-				if (wParam == VK_ESCAPE)
-					self->m_EscapeDown = false;
+			{
+				const Key key = TranslateKey(wParam);
+				if (key != Key::Unknown)
+				{
+					UpdateKey(self->m_Input, key, false);
+					return 0;
+				}
 				break;
+			}
 			case WM_KILLFOCUS:
-				self->m_EscapeDown = false;
-				break;
+				for (ButtonState& state : self->m_Input.Keys)
+					UpdateButton(state, false);
+				for (ButtonState& state : self->m_Input.MouseButtons)
+					UpdateButton(state, false);
+				if (GetCapture() == handle)
+					ReleaseCapture();
+				self->m_Input.HasCursorPosition = false;
+				return 0;
+			case WM_CAPTURECHANGED:
+				for (ButtonState& state : self->m_Input.MouseButtons)
+					UpdateButton(state, false);
+				return 0;
 			}
 		}
 

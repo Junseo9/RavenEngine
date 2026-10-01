@@ -36,8 +36,19 @@ namespace Raven
 		while (!window->ShouldClose())
 		{
 			window->PollEvents();
-			if (window->IsKeyDown(Key::Escape))
-				Log(LogLevel::Warning, "Escape Pressed");
+			
+			const InputState& input = window->GetInputState();
+			if (input.WasKeyPressed(Key::Escape))
+				Log(LogLevel::Warning, "Escape pressed");
+			if (input.WasKeyReleased(Key::Escape))
+				Log(LogLevel::Info, "Escape released");
+			const ButtonState leftMouse =
+				input.GetMouseButtonState(MouseButton::Left);
+			if (leftMouse.Pressed)
+				Log(LogLevel::Info, "Left mouse pressed");
+			if (leftMouse.Released)
+				Log(LogLevel::Info, "Left mouse released");
+
 			std::this_thread::sleep_for(std::chrono::milliseconds(16));
 		}
 	}

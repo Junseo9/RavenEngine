@@ -20,7 +20,7 @@ namespace Raven
 		std::uint32_t GetHeight() const override;
 		std::vector<const char*> GetRequiredVulkanInstanceExtensions() const override;
 		VkSurfaceKHR CreateVulkanSurface(VkInstance instance) const override;
-		bool IsKeyDown(Key key) const override;
+		const InputState& GetInputState() const override;
 
 	private:
 		static LRESULT CALLBACK WindowProc(
@@ -30,6 +30,6 @@ namespace Raven
 		std::uint32_t m_Width = 0;
 		std::uint32_t m_Height = 0;
 		bool m_ShouldClose = false;
-		bool m_EscapeDown = false;
+		InputState m_Input{};
 	};
 }
