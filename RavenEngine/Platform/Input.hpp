@@ -133,6 +133,56 @@ namespace Raven
 			return GetKeyState(key).Down;
 		}
 
+		Modifier GetModifiers() const
+		{
+			Modifier modifiers = Modifier::None;
+
+			if (IsKeyDown(Key::LeftShift) ||
+				IsKeyDown(Key::RightShift))
+				modifiers = modifiers | Modifier::Shift;
+
+			if (IsKeyDown(Key::LeftControl) ||
+				IsKeyDown(Key::RightControl))
+				modifiers = modifiers | Modifier::Control;
+
+			if (IsKeyDown(Key::LeftAlt) ||
+				IsKeyDown(Key::RightAlt))
+				modifiers = modifiers | Modifier::Alt;
+
+			if (IsKeyDown(Key::LeftSuper) ||
+				IsKeyDown(Key::RightSuper))
+				modifiers = modifiers | Modifier::Super;
+
+			return modifiers;
+		}
+
+		void SetKeyDown(Key key, bool down)
+		{
+			const auto index = static_cast<std::size_t>(key);
+			if (key == Key::Unknown || index >= Keys.size())
+				return;
+
+			ButtonState& state = Keys[index];
+			if (state.Down == down)
+				return;
+
+			state.Down = down;
+
+			// Preserve both transitions if a key is pressed and
+			// released during the same poll.
+			if (down)
+				state.Pressed = true;
+			else
+				state.Released = true;
+
+			// Capture modifiers after applying this transition.
+			KeyEvents.push_back({
+				key,
+				down ? KeyTransition::Pressed : KeyTransition::Released,
+				GetModifiers()
+			});
+		}
+
 		bool WasKeyPressed(Key key) const
 		{
 			return GetKeyState(key).Pressed;

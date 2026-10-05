@@ -30,8 +30,23 @@ namespace Raven
 			return result;
 		}
 
-		Key TranslateKey(WPARAM virtualKey)
+		Key TranslateKey(WPARAM virtualKey, LPARAM lParam)
 		{
+			if (virtualKey == VK_SHIFT)
+			{
+				const UINT scanCode = LOBYTE(HIWORD(lParam));
+				virtualKey = MapVirtualKeyW(scanCode, MAPVK_VSC_TO_VK_EX);
+			}
+			else if (virtualKey == VK_CONTROL || virtualKey == VK_MENU)
+			{
+				// Scan-code lookup can produce language keys on Korean layouts.
+				const bool extended = (HIWORD(lParam) & KF_EXTENDED) != 0;
+				if (virtualKey == VK_CONTROL)
+					virtualKey = extended ? VK_RCONTROL : VK_LCONTROL;
+				else
+					virtualKey = extended ? VK_RMENU : VK_LMENU;
+			}
+
 			if (virtualKey >= 'A' && virtualKey <= 'Z')
 			{
 				return static_cast<Key>(
@@ -48,6 +63,14 @@ namespace Raven
 
 			switch (virtualKey)
 			{
+			case VK_LSHIFT:   return Key::LeftShift;
+			case VK_RSHIFT:   return Key::RightShift;
+			case VK_LCONTROL: return Key::LeftControl;
+			case VK_RCONTROL: return Key::RightControl;
+			case VK_LMENU:    return Key::LeftAlt;
+			case VK_RMENU:    return Key::RightAlt;
+			case VK_LWIN:     return Key::LeftSuper;
+			case VK_RWIN:     return Key::RightSuper;
 			case '0':       return Key::Digit0;
 			case VK_ESCAPE: return Key::Escape;
 			case VK_RETURN: return Key::Enter;
@@ -81,15 +104,6 @@ namespace Raven
 			}
 
 			state.Down = down;
-		}
-
-		void UpdateKey(InputState& input, Key key, bool down)
-		{
-			const auto index = static_cast<std::size_t>(key);
-			if (key == Key::Unknown || index >= input.Keys.size())
-				return;
-
-			UpdateButton(input.Keys[index], down);
 		}
 
 		void UpdateMouseButton(
@@ -309,23 +323,22 @@ namespace Raven
 				return TRUE;
 			}
 			case WM_KEYDOWN:
-			{
-				const Key key = TranslateKey(wParam);
-				if (key != Key::Unknown)
-				{
-					UpdateKey(self->m_Input, key, true);
-					return 0;
-				}
-				break;
-			}
 			case WM_KEYUP:
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
 			{
-				const Key key = TranslateKey(wParam);
-				if (key != Key::Unknown)
-				{
-					UpdateKey(self->m_Input, key, false);
+				const Key key = TranslateKey(wParam, lParam);
+				if (key == Key::Unknown)
+					break;
+
+				const bool down =
+					message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+
+				self->m_Input.SetKeyDown(key, down);
+
+				if (message == WM_KEYDOWN || message == WM_KEYUP)
 					return 0;
-				}
+
 				break;
 			}
 			case WM_KILLFOCUS:
