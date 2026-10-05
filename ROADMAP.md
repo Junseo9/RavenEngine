@@ -86,4 +86,6 @@ The Windows `x64-debug` path builds and runs. It creates a native Win32 window, 
 
 ## Next Review Point
 
-Finish the behavior already promised by `Input.hpp`, one small change at a time. Start by populating `KeyEvents` with the active modifier snapshot, then add mouse-wheel messages and the remaining Win32 key translations. Demonstrate each path temporarily in `Application`, remove diagnostic gameplay-like logging afterward, and only then move to the engine clock/frame-delta task.
+The current input baseline is sufficient to continue engine development. Keep the remaining key translations and repeat/text-input work tracked, and remove temporary input diagnostics from `Application` when moving to rendering.
+
+Prioritize the first rendered frame: select a physical device with graphics/presentation queues and swapchain support, create the logical device, then add the swapchain and command submission/synchronization needed to clear the window without validation errors. Define framebuffer resize and minimized/zero-size behavior before swapchain integration. Keep Vulkan ownership in renderer types and select devices by capabilities so the same code can support Win32 and Cocoa surfaces. Add the engine clock/frame delta before introducing time-based scene or gameplay updates.

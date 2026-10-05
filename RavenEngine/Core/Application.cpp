@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <string>
 
 #include "Log.hpp"
 #include "Assert.hpp"
@@ -10,6 +11,7 @@
 #include "../Renderer/Vulkan/VulkanInstance.hpp"
 #include "../Renderer/Vulkan/VulkanSurface.hpp"
 #include "../Renderer/Vulkan/VulkanDebugMessenger.hpp"
+#include "../Renderer/Vulkan/VulkanPhysicalDevice.hpp"
 
 namespace Raven
 {
@@ -33,22 +35,42 @@ namespace Raven
 		VulkanSurface surface(instance, *window);
 		Log(LogLevel::Info, "Vulkan instance and surface created");
 
+		const auto physicalDevice =
+			SelectVulkanPhysicalDevice(instance.Get(), surface.Get());
+
+		Log(LogLevel::Info,
+			std::string("Selected GPU: ") + physicalDevice.Properties.deviceName);
+		
+		Log(LogLevel::Info,
+			"Queue families: graphics=" +
+			std::to_string(*physicalDevice.QueueFamilies.Graphics) +
+			", present=" +
+			std::to_string(*physicalDevice.QueueFamilies.Present));
+
 		while (!window->ShouldClose())
 		{
 			window->PollEvents();
 			
 			const InputState& input = window->GetInputState();
-			if (input.WasKeyPressed(Key::Escape))
-				Log(LogLevel::Warning, "Escape pressed");
-			if (input.WasKeyReleased(Key::Escape))
-				Log(LogLevel::Info, "Escape released");
-			const ButtonState leftMouse =
-				input.GetMouseButtonState(MouseButton::Left);
-			if (leftMouse.Pressed)
-				Log(LogLevel::Info, "Left mouse pressed");
-			if (leftMouse.Released)
-				Log(LogLevel::Info, "Left mouse released");
 
+			if (input.ScrollX != 0.0f || input.ScrollY != 0.0f)
+			{
+				std::cout << "Scroll: "
+				<< input.ScrollX << ", " << input.ScrollY << '\n';
+			}
+
+			if (input.WasKeyPressed(Key::Enter))
+				Log(LogLevel::Info, "Main Enter pressed");
+
+			if (input.WasKeyPressed(Key::NumpadEnter))
+				Log(LogLevel::Info, "Numpad Enter pressed");
+
+			if (input.WasKeyPressed(Key::Digit1))
+				Log(LogLevel::Info, "Physical Digit1 pressed");
+
+			if (input.WasKeyPressed(Key::Slash))
+				Log(LogLevel::Info, "Physical Slash pressed");
+			
 			std::this_thread::sleep_for(std::chrono::milliseconds(16));
 		}
 	}

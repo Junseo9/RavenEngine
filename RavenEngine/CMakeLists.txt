@@ -16,6 +16,10 @@ add_executable(RavenEngine
     "Renderer/Vulkan/VulkanInstance.hpp"
     "Renderer/Vulkan/VulkanSurface.cpp"
     "Renderer/Vulkan/VulkanSurface.hpp"
+    "Renderer/Vulkan/VulkanQueueFamilies.cpp"
+    "Renderer/Vulkan/VulkanQueueFamilies.hpp"
+    "Renderer/Vulkan/VulkanPhysicalDevice.hpp"
+    "Renderer/Vulkan/VulkanPhysicalDevice.cpp"
 )
 
 target_compile_definitions(RavenEngine PRIVATE

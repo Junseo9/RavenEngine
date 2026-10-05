@@ -183,6 +183,25 @@ namespace Raven
 			});
 		}
 
+		void ReleaseAllKeys()
+		{
+			for (std::size_t i = 0; i < Keys.size(); ++i)
+			{
+				ButtonState& state = Keys[i];
+				if (!state.Down)
+					continue;
+
+				state.Down = false;
+				state.Released = true;
+
+				KeyEvents.push_back({
+					static_cast<Key>(i),
+					KeyTransition::Released,
+					Modifier::None
+				});
+			}
+		}
+
 		bool WasKeyPressed(Key key) const
 		{
 			return GetKeyState(key).Pressed;
@@ -205,6 +224,12 @@ namespace Raven
 				}
 			}
 			return false;
+		}
+
+		void AddScroll(float x, float y)
+		{
+			ScrollX += x;
+			ScrollY += y;
 		}
 
 		void ClearTransientState()

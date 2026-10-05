@@ -30,8 +30,76 @@ namespace Raven
 			return result;
 		}
 
+		Key TranslatePhysicalKey(LPARAM lParam)
+		{
+			const UINT flags = HIWORD(lParam);
+			if ((flags & KF_EXTENDED) != 0)
+				return Key::Unknown;
+			
+			switch (LOBYTE(flags))
+			{
+			case 0x10: return Key::Q;
+			case 0x11: return Key::W;
+			case 0x12: return Key::E;
+			case 0x13: return Key::R;
+			case 0x14: return Key::T;
+			case 0x15: return Key::Y;
+			case 0x16: return Key::U;
+			case 0x17: return Key::I;
+			case 0x18: return Key::O;
+			case 0x19: return Key::P;
+			
+			case 0x1E: return Key::A;
+			case 0x1F: return Key::S;
+			case 0x20: return Key::D;
+			case 0x21: return Key::F;
+			case 0x22: return Key::G;
+			case 0x23: return Key::H;
+			case 0x24: return Key::J;
+			case 0x25: return Key::K;
+			case 0x26: return Key::L;
+			
+			case 0x2C: return Key::Z;
+			case 0x2D: return Key::X;
+			case 0x2E: return Key::C;
+			case 0x2F: return Key::V;
+			case 0x30: return Key::B;
+			case 0x31: return Key::N;
+			case 0x32: return Key::M;
+			
+			case 0x02: return Key::Digit1;
+			case 0x03: return Key::Digit2;
+			case 0x04: return Key::Digit3;
+			case 0x05: return Key::Digit4;
+			case 0x06: return Key::Digit5;
+			case 0x07: return Key::Digit6;
+			case 0x08: return Key::Digit7;
+			case 0x09: return Key::Digit8;
+			case 0x0A: return Key::Digit9;
+			case 0x0B: return Key::Digit0;
+
+			case 0x0C: return Key::Minus;
+			case 0x0D: return Key::Equal;
+			case 0x1A: return Key::LeftBracket;
+			case 0x1B: return Key::RightBracket;
+			case 0x27: return Key::Semicolon;
+			case 0x28: return Key::Apostrophe;
+			case 0x29: return Key::Grave;
+			case 0x2B: return Key::Backslash;
+			case 0x33: return Key::Comma;
+			case 0x34: return Key::Period;
+			case 0x35: return Key::Slash;
+
+			default: return Key::Unknown;
+			}
+		}
+
 		Key TranslateKey(WPARAM virtualKey, LPARAM lParam)
 		{
+			const Key physicalKey = TranslatePhysicalKey(lParam);
+			if (physicalKey != Key::Unknown)
+				return physicalKey;
+
 			if (virtualKey == VK_SHIFT)
 			{
 				const UINT scanCode = LOBYTE(HIWORD(lParam));
@@ -47,18 +115,18 @@ namespace Raven
 					virtualKey = extended ? VK_RMENU : VK_LMENU;
 			}
 
-			if (virtualKey >= 'A' && virtualKey <= 'Z')
+			if (virtualKey >= VK_F1 && virtualKey <= VK_F12)
 			{
 				return static_cast<Key>(
-					static_cast<std::uint16_t>(Key::A) +
-					static_cast<std::uint16_t>(virtualKey - 'A'));
+					static_cast<std::uint16_t>(Key::F1) +
+					static_cast<std::uint16_t>(virtualKey - VK_F1));
 			}
 
-			if (virtualKey >= '1' && virtualKey <= '9')
+			if (virtualKey >= VK_F13 && virtualKey <= VK_F24)
 			{
 				return static_cast<Key>(
-					static_cast<std::uint16_t>(Key::Digit1) +
-					static_cast<std::uint16_t>(virtualKey - '1'));
+					static_cast<std::uint16_t>(Key::F13) +
+					static_cast<std::uint16_t>(virtualKey - VK_F13));
 			}
 
 			switch (virtualKey)
@@ -71,9 +139,10 @@ namespace Raven
 			case VK_RMENU:    return Key::RightAlt;
 			case VK_LWIN:     return Key::LeftSuper;
 			case VK_RWIN:     return Key::RightSuper;
-			case '0':       return Key::Digit0;
 			case VK_ESCAPE: return Key::Escape;
-			case VK_RETURN: return Key::Enter;
+			case VK_RETURN: 
+				return (HIWORD(lParam) & KF_EXTENDED) != 0
+					? Key::NumpadEnter : Key::Enter;
 			case VK_BACK:   return Key::Backspace;
 			case VK_TAB:    return Key::Tab;
 			case VK_SPACE:  return Key::Space;
@@ -282,6 +351,20 @@ namespace Raven
 				self->m_Input.CursorY = y;
 				return 0;
 			}
+			case WM_MOUSEWHEEL:
+			case WM_MOUSEHWHEEL:
+			{
+				const float steps =
+					static_cast<float>(GET_WHEEL_DELTA_WPARAM(wParam)) / 
+					static_cast<float>(WHEEL_DELTA);
+				
+				if (message == WM_MOUSEWHEEL)
+					self->m_Input.AddScroll(0.0f, steps);
+				else
+					self->m_Input.AddScroll(steps, 0.0f);
+
+				return 0;
+			}
 			case WM_LBUTTONDOWN:
 				UpdateMouseButton(
 					handle, self->m_Input, MouseButton::Left, true);
@@ -342,8 +425,8 @@ namespace Raven
 				break;
 			}
 			case WM_KILLFOCUS:
-				for (ButtonState& state : self->m_Input.Keys)
-					UpdateButton(state, false);
+				self->m_Input.ReleaseAllKeys();
+
 				for (ButtonState& state : self->m_Input.MouseButtons)
 					UpdateButton(state, false);
 				if (GetCapture() == handle)
